@@ -1,26 +1,17 @@
-import { DateCalendar, DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
-import { useState, useEffect } from 'react';
+import { DatePicker, LocalizationProvider } from '@mui/x-date-pickers';
+import { useState } from 'react';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 import dayjs from 'dayjs';
 import { Box, Button, CircularProgress, styled, Typography } from '@mui/material';
-import { DataGrid, type GridRowsProp, type GridColDef } from '@mui/x-data-grid';
+import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import { flattenObject } from '../utils/FlattenObject';
 import { dangerScore } from '../utils/DangerScore';
-import { BarChart } from '@mui/x-charts/BarChart';
-import { COMPARISION_BUILDINGS } from '../Constants';
-import { AsteroidScatterChart } from '../components/ScatterChart';
-import { AsteroidDonutChart } from '../components/AsteroidDonutChart';
-import { TopDiameterAsteroidsChart } from '../components/TopAsteroidsChart';
+import { VelocityLunarChart } from '../components/VelocityLunarChart';
+import { HazardousProportionChart } from '../components/HazardousProportionChart';
+import { TopDiameterChart } from '../components/TopDiameterChart';
 import SearchIcon from '@mui/icons-material/Search';
 
-export interface Asteroid {
-    name: string;
-    id: string;
-    is_potentially_hazardous_asteroid: boolean;
-    is_sentry_object: boolean;
-    estimated_diameter: Diameter;
-    close_approach_data: ApproachData[]
-}
+
 
 export interface FlattenedAsteroid {
     name: string;
@@ -39,32 +30,43 @@ export interface FlattenedAsteroidDangerScore extends FlattenedAsteroid {
     velocity_km_per_sec: number;
 }
 
-
-export interface ApproachData {
-    relative_velocity: RelativeVelocity
-    miss_distance: MissDistance
-}
-
-export interface MissDistance {
-    lunar: string
-}
-
-export interface RelativeVelocity {
-    kilometers_per_second: string
-}
-
-
-export interface Diameter {
-    meters: DiameterMeters;
-}
-
-export interface DiameterMeters {
-    estimated_diameter_min: number
-    estimated_diameter_max: number
+export interface ChartProps {
+  asteroids: FlattenedAsteroidDangerScore[];
 }
 
 interface NasaResponse {
     near_earth_objects: Record<string, Asteroid[]>;
+}
+
+interface Asteroid {
+    name: string;
+    id: string;
+    is_potentially_hazardous_asteroid: boolean;
+    is_sentry_object: boolean;
+    estimated_diameter: Diameter;
+    close_approach_data: ApproachData[]
+}
+
+interface ApproachData {
+    relative_velocity: RelativeVelocity
+    miss_distance: MissDistance
+}
+
+interface MissDistance {
+    lunar: string
+}
+
+interface RelativeVelocity {
+    kilometers_per_second: string
+}
+
+interface Diameter {
+    meters: DiameterMeters;
+}
+
+interface DiameterMeters {
+    estimated_diameter_min: number
+    estimated_diameter_max: number
 }
 
 const columns: GridColDef[] = [
@@ -77,13 +79,10 @@ const columns: GridColDef[] = [
     { field: 'danger_score', headerName: 'Danger Score', width: 200 }
 ];
 
-
-
 export default function MainPage() {
     const todayDate = new Date().toISOString().split('T')[0];
     const [beginDate, setBeginDate] = useState(todayDate);
     const [endDate, setEndDate] = useState(todayDate);
-    const [asteroids, setAsteroids] = useState<Asteroid[]>([]);
     const [flattenedAsteroids, setFlattenedAsteroids] = useState<FlattenedAsteroidDangerScore[]>([]);
     const [loading, setLoading] = useState(false);
 
@@ -98,7 +97,6 @@ export default function MainPage() {
             const result = await response.json() as NasaResponse;
 
             if (result.near_earth_objects) {
-                setAsteroids(Object.values(result.near_earth_objects).flat())
                 const flattened = Object.values(result.near_earth_objects).flat().map(asteroid => {
                     const flattenedAsteroid = flattenObject(asteroid) as FlattenedAsteroid;
                     return {
@@ -109,10 +107,6 @@ export default function MainPage() {
                     } as FlattenedAsteroidDangerScore
                 });
                 setFlattenedAsteroids(flattened);
-                // setTopAsteroids([...flattened].sort((a, b) => {
-                //     return b.estimated_diameter_meters_estimated_diameter_max - a.estimated_diameter_meters_estimated_diameter_max
-                // }).slice(0, 5))
-
             }
 
         } catch (error) {
@@ -128,14 +122,12 @@ export default function MainPage() {
                 <Typography color='lightgray'>Asteroids Dashboard ☄️</Typography>
             </PageTitle>
             <PageWrapper>
-
-
                 <InputWrapper>
-
                     <DatePickerWrapper>
                         <Typography>Set date interval (date order is irrevelant) </Typography>
                         <LocalizationProvider dateAdapter={AdapterDayjs}>
-                            <StyledDatePicker defaultValue={dayjs()}
+                            <StyledDatePicker
+                                defaultValue={dayjs()}
                                 onChange={(date) => setBeginDate(date?.toISOString() || todayDate)}
                                 label={"Choose threshold"} />
                             <StyledDatePicker
@@ -145,11 +137,11 @@ export default function MainPage() {
                         </LocalizationProvider>
                     </DatePickerWrapper>
                     <SearchButton
-                     onClick={fetchData}
-                      variant="contained"
-                       endIcon={<SearchIcon />}
-                       sx={{backgroundColor: "darkblue"}}
-                       >Search</SearchButton>
+                        onClick={fetchData}
+                        variant="contained"
+                        endIcon={<SearchIcon />}
+                        sx={{ backgroundColor: "darkblue" }}
+                    >Search</SearchButton>
                 </InputWrapper>
 
                 {loading && <StyledCircProgress />}
@@ -160,10 +152,10 @@ export default function MainPage() {
                 ) : (
 
                     <DataWrapper>
-                        <DataGrid sx={{backgroundColor: 'lightgray'}} columns={columns} rows={flattenedAsteroids} />
-                        <TopDiameterAsteroidsChart asteroids={flattenedAsteroids} />
-                        <AsteroidScatterChart asteroids={flattenedAsteroids} />
-                        <AsteroidDonutChart asteroids={flattenedAsteroids} />
+                        <DataGrid sx={{ backgroundColor: 'lightgray' }} columns={columns} rows={flattenedAsteroids} />
+                        <TopDiameterChart asteroids={flattenedAsteroids} />
+                        <VelocityLunarChart asteroids={flattenedAsteroids} />
+                        <HazardousProportionChart asteroids={flattenedAsteroids} />
                     </DataWrapper>
                 )}
             </PageWrapper>
@@ -176,31 +168,21 @@ const PageWrapper = styled(Box)(({ theme }) => ({
     flexDirection: 'column',
     gap: '1em',
     margin: '8px 16px',
-    
+
     [theme.breakpoints.up('lg')]: {
-    maxWidth: '1200px',
-    margin: 'auto',
-    marginTop: '2em'
+        maxWidth: '1200px',
+        margin: 'auto',
+        marginTop: '2em'
     }
 }));
 
-const PageTitle = styled(Box)(({ theme }) => ({
+const PageTitle = styled(Box)(() => ({
     backgroundColor: 'darkblue',
     height: '3em',
     display: 'flex',
     justifyContent: 'center',
     alignItems: 'center',
 }));
-
-
-
-const DataWrapper = styled(Box)(({ theme }) => ({
-    display: 'flex',
-    flexDirection: 'column',
-    gap: '3em'
-
-}));
-
 
 const InputWrapper = styled(Box)(({ theme }) => ({
     [theme.breakpoints.down('md')]: {
@@ -219,28 +201,6 @@ const InputWrapper = styled(Box)(({ theme }) => ({
 
 }));
 
-const SearchButton = styled(Button)(({ theme }) => ({
-    flex: 1,
-    
-    // [theme.breakpoints.up('md')]: {
-    //     flex: 4
-    // },
-
-}))
-
-
-const StyledDatePicker = styled(DatePicker)(({ theme }) => ({
-    borderRadius: '5px',
-    borderWidth: '20px',
-    flex: 3,
-}))
-
-const StyledCircProgress = styled(CircularProgress)(({ theme }) => ({
-    margin: '1.5em',
-    alignSelf: 'center',
-    color: 'purple'
-}))
-
 const DatePickerWrapper = styled(Box)(({ theme }) => ({
     backgroundColor: 'lightgray',
     display: 'flex',
@@ -256,10 +216,33 @@ const DatePickerWrapper = styled(Box)(({ theme }) => ({
 
 }));
 
+const SearchButton = styled(Button)(() => ({
+    flex: 1,
+}))
 
-const NoDataInfo = styled(Typography)(({ theme }) => ({
+const StyledDatePicker = styled(DatePicker)(() => ({
+    borderRadius: '5px',
+    borderWidth: '20px',
+    flex: 3,
+}))
+
+
+const StyledCircProgress = styled(CircularProgress)(() => ({
+    margin: '1.5em',
+    alignSelf: 'center',
+    color: 'purple'
+}))
+
+const NoDataInfo = styled(Typography)(() => ({
     backgroundColor: 'lightgray',
     borderRadius: '5px',
     padding: '1em',
     textAlign: 'center'
+}));
+
+const DataWrapper = styled(Box)(() => ({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '3em'
+
 }));
